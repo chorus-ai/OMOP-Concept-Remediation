@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.env
+*.log
+private*/
+outputs/
+plans/
+approvals/
+*.pem
+*.key
