@@ -1,48 +1,51 @@
-# VM Quickstart: create a read-only preview
+# Quickstart: run a read-only Preview
 
-Success means a new private PDF headed **PREVIEW - NO CHANGES**, with **0 committed changes**. Start on a disposable, approved PostgreSQL VM/database copy. Preview does not change the database, but large scans use database resources.
+Use Preview to see proposed concept replacements, findings that need manual review, and what the scan covered. It does not update the database. You need Python 3.10 or later, the project files, an approved PostgreSQL database, its CDM and vocabulary schema names, a read-only account, and a private report folder outside the repository.
 
-## 1. Set up Jupyter
+## 1. Get the project on the machine that runs Jupyter
 
-You need Python 3.10+, the whole project folder, and access to an approved Python package index or approved local wheels. Paste the block into a terminal **on the VM that runs Jupyter**, replacing the example path with the folder that contains `requirements.txt`. Stop if any line fails.
+Use **Terminal** to get the files, install the Python packages, and register the notebook kernel. Do not enter database credentials there. If JupyterLab runs on a VM or JupyterHub and you access it in your browser, open **File > New > Terminal** in JupyterLab. Your laptop's terminal prepares only your laptop. For a local run, use PowerShell on Windows or Terminal on macOS/Linux.
+
+Clone the repository in a writable location, or choose **Code > Download ZIP** on GitHub and extract it into a new folder on the machine that runs Jupyter. Use a fresh folder rather than overwriting a working copy. If Git is unavailable or the filesystem rejects Git's permission changes, use the ZIP route. If JupyterLab has no Terminal, use an approved preconfigured kernel with the dependencies already installed. See [troubleshooting](TROUBLESHOOTING.md) for managed environments.
+
+## 2. Prepare an isolated Python kernel
+
+Run one block from the project folder (the folder that contains `requirements.txt`). Use the approved package index or locally supplied wheels. You do not need to activate the environment or change the server's Python.
+
+**macOS, Linux or a Linux VM:**
 
 ```bash
-cd /path/to/OMOP-Concept-Remediation
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m ipykernel install --user --name concept-remediation --display-name "Concept Remediation"
 ```
 
-If JupyterLab is already running, use it. Otherwise, from the same folder run `.venv/bin/python -m jupyter lab`.
+**Windows (PowerShell):**
 
-**Windows VM:** use PowerShell and the actual local project path. Run `py -3 -m venv .venv`, then replace each `.venv/bin/python` command above (including the optional launch) with `.\.venv\Scripts\python.exe`. No global installation, activation or change to execution policy is needed.
-
-## 2. Open the notebook and enter your settings
-
-1. Open `Preview_concept_remediation.ipynb` from the project folder. Click **Kernel > Change Kernel > Concept Remediation**. Run the first code cell without changing it: it should say **Preview only; no connection made.**
-2. In the next code cell, enter `cdm_schema`, `vocabulary_schema` and `cdm_version` (`"5.4"` or `"5.5"`, matching `CDM_SOURCE.cdm_version`). Set `private_output` to a site-approved private folder **outside this project**.
-3. In the first cell, set `RUN_DATABASE = True` and rerun it. Then run the second cell. Run the remaining cells individually after enabling the connection. Enter the DBA-provided hostname, port (blank means 5432), database name, **read-only username**, and password when prompted. Enter the CA certificate path if the DBA provides one; otherwise leave that prompt blank to use the PostgreSQL client's default CA lookup on the VM. Use the hostname on the certificate and keep `sslmode="verify-full"`. Never paste credentials into code cells or save them in config.
-4. Read **Selected available event tables** and the coverage/exclusions. If they match your approved scope, run the scan cell and open the new `preview_<id>.pdf` in the private folder. Run the final cell to close the connection. Save or share notebook copies only after removing outputs and any site-specific private details.
-
-## Check the result
-
-| What you see | Meaning / action |
-|---|---|
-| Proposed replacements | Structurally eligible, not approved. Ask the domain owner to review the proposed meaning. |
-| Blocked or review rows | Investigate the reason and listed candidates. Rows marked `same group` repeat the finding, not its count. |
-| No proposed replacements | The report is still valid; check blocked findings and exclusions. |
-| Missing or inaccessible fields | Coverage is incomplete. Confirm schemas and grants with the DBA; this does not mean zero occurrences. |
-| Import, certificate, scope or PDF error | Stop, close the connection if open, and fix the kernel/project path, CA, scope or private output location. Do not weaken TLS or switch to apply. |
-
-Counts are event/field occurrences, not distinct patients. Reports can contain exact small counts and local labels. Keep them private and seek site disclosure review before sharing.
-
-## Advanced controls
-
-`as_of` defaults to today. Set a fixed ISO date only when the review calls for it. The starting `tables` value in the connection cell is a bootstrap placeholder; discovery replaces it with visible supported event tables. If authorized to narrow primary-event scope **after discovery**, add a cell before the scan, for example:
-
-```python
-from dataclasses import replace
-cfg = replace(cfg, tables=("condition_occurrence",))
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m ipykernel install --user --name concept-remediation --display-name "Concept Remediation"
 ```
 
-The separate versioned audit still inventories other fields. A site name is not a row filter. Preview is never permission to apply; see the [operator and DBA guide](SAFETY.md) for that separate workflow.
+If JupyterLab is already open, reload it after registering the kernel. If you are running Jupyter locally and it is not yet open, run `.venv/bin/python -m jupyter lab` (macOS/Linux) or `.\.venv\Scripts\python.exe -m jupyter lab` (Windows) from the project folder. If installation or kernel registration hits a permissions error, stop and check [troubleshooting](TROUBLESHOOTING.md) before reinstalling anything.
+
+## 3. Connect and run Preview
+
+1. Open `Preview_concept_remediation.ipynb` from the project folder and choose **Kernel > Change Kernel > Concept Remediation**. Run the first code cell with the default disconnected setup; it should say **Preview only; no connection made.**
+2. In the connection cell, set the approved CDM and vocabulary schemas, CDM version (5.4 or 5.5), and private output folder outside the repository. Use the version from CDM_SOURCE.cdm_version.
+3. Run the connection cell and type CONNECT when prompted. Enter the database DNS name, port, database name and read-only credentials. Keep verify-full and use the site-approved CA. For certificate and kernel details, see [troubleshooting](TROUBLESHOOTING.md).
+4. Confirm the selected event tables, then run the scan cell. Run **Save the Preview outputs** to create the PDF, XLSX and JSON. Check that the PDF says **PREVIEW - NO CHANGES**. Run the last cell to close the connection.
+
+## Read the result
+
+| What you see | How to interpret it |
+| --- | --- |
+| Proposed replacements | Candidates for domain review; Preview does not apply them. |
+| Blocked or review findings | Check the stated reason and any listed mapping candidates. Rows marked `same group` repeat a finding, not its count. |
+| No proposed replacements | Review blocked findings and scan coverage before concluding that no issues were found. |
+| Missing, inaccessible or unscanned fields | Coverage is incomplete; these are not zero counts. |
+
+Counts refer to field occurrences, not unique people. Treat the PDF as private, even though it excludes patient and event IDs. Do not commit site outputs, credentials, or saved notebook outputs to Git.
+
+For field coverage, see [CDM scope](CDM_COVERAGE.md). An authorized maintainer follows the separate [operator and DBA guide](SAFETY.md) for changes.

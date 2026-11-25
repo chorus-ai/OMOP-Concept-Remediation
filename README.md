@@ -23,10 +23,19 @@ Units, coded results, demographic and record-type fields, death fields, note con
 
 ## How to run it
 
-1. **Preview.** Follow the [VM Quickstart](docs/QUICKSTART.md) and open `Preview_concept_remediation.ipynb` with a read-only PostgreSQL account. The private PDF lists proposed replacements, findings that need manual review, affected record counts, and coverage gaps. It does not change the database.
+1. **Preview.** Follow the [Quickstart for local Jupyter or a managed VM](docs/QUICKSTART.md) and open `Preview_concept_remediation.ipynb` with a read-only PostgreSQL account. The private PDF lists proposed replacements, findings that need manual review, affected record counts, and coverage gaps. It does not change the database. See [Preview troubleshooting](docs/TROUBLESHOOTING.md) for setup, certificate and PDF output issues.
 2. **Apply.** An authorized maintainer uses `Run_concept_remediation.ipynb` to review and approve a plan for the exact rows to update. After explicit confirmation, the tool rechecks the approved plan and writes the changes and the audit journal in one transaction. See the [operator and DBA guide](docs/SAFETY.md).
 3. **Review the result.** The committed PDF reports actual changes from the journal, with the full list of old-to-new pairs, counts, and charts by table and domain. See the [synthetic PDF example](examples/committed_report_synthetic.pdf) and [report and recovery guide](docs/REPORTING.md).
 
 [SQL scripts](sql/) · [Python implementation](remediation/) · [original SQL review](docs/SOURCE_REVIEW.md)
 
 Keep credentials, site reports, plans, and notebook outputs out of Git. Write site outputs to a private directory outside the repository. The example PDF contains synthetic data only.
+
+## Report examples
+
+Both bundles use invented concept IDs, labels and counts. They do not contain site data.
+
+| Workflow | PDF summary | XLSX detail | JSON for automated review |
+|---|---|---|---|
+| Read-only Preview | [PDF](examples/preview_report_synthetic.pdf) | [XLSX](examples/preview_report_synthetic.xlsx) | [JSON](examples/preview_report_synthetic.json) |
+| Committed remediation | [PDF](examples/committed_report_synthetic.pdf) | [XLSX](examples/committed_report_synthetic.xlsx) | [JSON](examples/committed_report_synthetic.json) |

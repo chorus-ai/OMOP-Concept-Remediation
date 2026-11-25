@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
+from collections import Counter
 from .policy import WRITABLE, classify
 from .catalog import CATALOG, EVENT_TABLES, coverage_from_columns
 
@@ -136,7 +137,7 @@ def _preview(cur,cfg,primary_only=False):
             for r in cur.fetchall():
                 status,target=classify(r["old_id"],r["old"],r["edges"],domain,writable,cfg.as_of)
                 records.append(dict(r,table=table,column=col,status=status,new_id=target))
-    return records
+    return _screen_event_keys(cur,cfg,records)
 
 def _ensure_idle(conn):
     if not conn.autocommit or conn.info.transaction_status != 0:
@@ -164,20 +165,126 @@ def export_preview(records,path):
             values={k:("'"+v if isinstance(v,str) and v.startswith(("=","+","-","@","\t","\r")) else v) for k,v in values.items()}
             w.writerow(values)
 
+def export_review_tables(records,folder,*,prefix="preview"):
+    """Separate actionable groups; retain current standards as field totals."""
+    folder=Path(folder)
+    folder.mkdir(mode=0o700,parents=True,exist_ok=True)
+    proposed=[r for r in records if r["status"]=="ELIGIBLE_FOR_REVIEW"]
+    review=[r for r in records if r["status"] not in ("ELIGIBLE_FOR_REVIEW","CURRENT_STANDARD")]
+    standards={}
+    for r in records:
+        if r["status"]=="CURRENT_STANDARD":
+            key=(r["table"],r["column"])
+            standards[key]=standards.get(key,0)+r["record_count"]
+    paths={kind:folder/f"{prefix}_{kind}.csv" for kind in ("proposed","manual_review","already_standard")}
+    export_preview(proposed,paths["proposed"])
+    export_preview(review,paths["manual_review"])
+    with paths["already_standard"].open("w",encoding="utf-8",newline="") as stream:
+        writer=csv.writer(stream)
+        writer.writerow(("table","column","record_count"))
+        writer.writerows((*key,count) for key,count in sorted(standards.items()))
+    return paths
+
+
+def _candidate_groups(records):
+    """Group vocabulary-eligible options by table before checking record IDs."""
+    groups={}
+    for r in records:
+        if r["status"]=="ELIGIBLE_FOR_REVIEW":
+            groups.setdefault(r["table"],{})[r["old_id"]]=r
+    return groups
+
+def _key_cte(cfg,table):
+    from psycopg import sql
+    pk,col,_=WRITABLE[table]
+    args=dict(pk=sql.Identifier(pk),col=sql.Identifier(col),
+              rel=sql.Identifier(cfg.cdm_schema,table))
+    prefix=sql.SQL("""
+        WITH candidates AS (
+            SELECT {pk} AS event_key, {col} AS old_id
+            FROM {rel} WHERE {col}=ANY(%s)
+        ), touched_keys AS (
+            SELECT DISTINCT event_key FROM candidates WHERE event_key IS NOT NULL
+        ), duplicate_keys AS (
+            SELECT all_rows.{pk} AS event_key
+            FROM {rel} all_rows JOIN touched_keys k ON all_rows.{pk}=k.event_key
+            GROUP BY all_rows.{pk} HAVING count(*) > 1
+        )
+    """).format(**args)
+    return prefix,args
+
+def _split_key_counts(records, excluded):
+    outcome=[]
+    for r in records:
+        count=r["record_count"]
+        skips=excluded.get((r["table"],r["old_id"]),{}) if r["status"]=="ELIGIBLE_FOR_REVIEW" else {}
+        for status,n in skips.items():
+            if n:
+                outcome.append(dict(r,status=status,new_id=None,record_count=n))
+                count-=n
+        if count<0:
+            raise ValueError("Event-key preflight counts exceed candidate observations")
+        if count:
+            outcome.append(dict(r,record_count=count))
+    return outcome
+
+def _screen_event_keys(cur,cfg,records):
+    from psycopg import sql
+    exclusions={}
+    for table,groups in sorted(_candidate_groups(records).items()):
+        prefix,_=_key_cte(cfg,table)
+        cur.execute(prefix+sql.SQL("""
+            SELECT c.old_id,
+                   count(*) FILTER (WHERE c.event_key IS NULL) AS missing,
+                   count(*) FILTER (WHERE d.event_key IS NOT NULL) AS duplicate
+            FROM candidates c LEFT JOIN duplicate_keys d USING (event_key)
+            GROUP BY c.old_id
+        """),(sorted(groups),))
+        for r in cur.fetchall():
+            exclusions[(table,r["old_id"])]={"NULL_EVENT_ID":r["missing"],"DUPLICATE_EVENT_ID":r["duplicate"]}
+    return _split_key_counts(records,exclusions)
+
 def _capture(cur,cfg,records):
     from psycopg import sql
     rows=[]
-    for r in records:
-        if r["status"]!="ELIGIBLE_FOR_REVIEW": continue
-        pk=WRITABLE[r["table"]][0]
-        cur.execute(sql.SQL("SELECT {pk} AS pk,md5(row_to_json(t)::text) AS before_hash FROM {s}.{t} t WHERE {c}=%s ORDER BY {pk}").format(
-            pk=sql.Identifier(pk),s=sql.Identifier(cfg.cdm_schema),t=sql.Identifier(r["table"]),c=sql.Identifier(r["column"])),(r["old_id"],))
+    for table,groups in sorted(_candidate_groups(records).items()):
+        prefix,names=_key_cte(cfg,table)
+        old_ids=sorted(groups)
+        cur.execute(prefix+sql.SQL("""
+            SELECT t.{pk} AS pk, t.{col} AS old_id,
+                   md5(row_to_json(t)::text) AS before_hash
+            FROM {rel} t LEFT JOIN duplicate_keys d ON t.{pk}=d.event_key
+            WHERE t.{col}=ANY(%s) AND t.{pk} IS NOT NULL AND d.event_key IS NULL
+            ORDER BY t.{pk}
+        """).format(**names),(old_ids,old_ids))
+        counts=Counter()
         for row in cur:
-            rows.append(dict(row,table=r["table"],column=r["column"],old_id=r["old_id"],new_id=r["new_id"]))
-            if len(rows)>cfg.max_plan_rows: raise ValueError("Plan limit exceeded; narrow selected tables, do not truncate")
-    keys=[(r["table"],r["column"],r["pk"]) for r in rows]
-    if any(k[2] is None for k in keys) or len(keys)!=len(set(keys)): raise ValueError("Non-unique or NULL row identifiers")
+            mapping=groups[row["old_id"]]
+            rows.append(dict(row,table=table,column=mapping["column"],new_id=mapping["new_id"]))
+            counts[row["old_id"]]+=1
+            if len(rows)>cfg.max_plan_rows:
+                raise ValueError("Plan limit exceeded; narrow selected tables, do not truncate")
+        if counts!=Counter({k:r["record_count"] for k,r in groups.items()}):
+            raise ValueError("Event-key preflight no longer matches captured rows")
+    keys={(r["table"],r["pk"]) for r in rows}
+    if len(keys)!=len(rows):raise ValueError("Non-unique row identifiers")
     return rows
+
+def _verify_reversal_keys(cur,cfg,journal_rows):
+    from psycopg import sql
+    grouped={}
+    for row in journal_rows:
+        table=row["table_name"]
+        if table not in cfg.tables or table not in WRITABLE or row["column_name"]!=WRITABLE[table][1]:
+            raise ValueError("Journal outside approved scope")
+        grouped.setdefault(table,[]).append(row["row_id"])
+    for table, ids in sorted(grouped.items()):
+        pk=sql.Identifier(WRITABLE[table][0])
+        cur.execute(sql.SQL("SELECT count(*) AS n, count(DISTINCT {pk}) AS distinct_n FROM {rel} WHERE {pk}=ANY(%s)").format(
+            pk=pk,rel=sql.Identifier(cfg.cdm_schema,table)),(ids,))
+        counts=cur.fetchone()
+        if counts["n"]!=len(ids) or counts["distinct_n"]!=len(ids):
+            raise ValueError("Journal event identifiers are no longer unique and present; reversal canceled")
 
 def build_plan(conn,cfg):
     _ensure_idle(conn)
@@ -324,6 +431,7 @@ def rollback_run(conn,cfg,run_id,*,confirmation="",commit=False):
         cur.execute(sql.SQL("SELECT * FROM {}.journal WHERE run_id=%s ORDER BY table_name,column_name,row_id").format(sql.Identifier(cfg.audit_schema)),(run_id,))
         rows=cur.fetchall()
         if not rows:raise ValueError("Missing journal")
+        _verify_reversal_keys(cur,cfg,rows)
         for r in rows:
             if r["table_name"] not in cfg.tables or r["table_name"] not in WRITABLE or r["column_name"]!=WRITABLE[r["table_name"]][1]:raise ValueError("Journal outside approved scope")
             cur.execute(qfile("rollback.sql",cdm=cfg.cdm_schema,table=r["table_name"],column=r["column_name"],pk=WRITABLE[r["table_name"]][0]),(r["old_id"],r["row_id"],r["new_id"],r["after_hash"]))

@@ -1,0 +1,1085 @@
+{
+  "synthetic_fixture": true,
+  "schema_version": 1,
+  "kind": "committed_remediation",
+  "report_id": "00000000-0000-4000-8000-000000000001",
+  "counts_are": "concept field occurrences, not patients",
+  "confidentiality": "synthetic demonstration; not a database result",
+  "cdm_version": "5.4",
+  "coverage": [
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "state": "SELECTED_FOR_REVIEW",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "drug_exposure",
+      "column": "drug_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "procedure_occurrence",
+      "column": "procedure_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "device_exposure",
+      "column": "device_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "measurement",
+      "column": "measurement_concept_id",
+      "state": "SELECTED_FOR_REVIEW",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "observation",
+      "column": "observation_concept_id",
+      "state": "SELECTED_FOR_REVIEW",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "visit_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "visit_detail",
+      "column": "visit_detail_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "specimen",
+      "column": "specimen_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "episode",
+      "column": "episode_concept_id",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "policy": "REVIEW_THEN_APPLY",
+      "reason": "Direct 1:1 same-domain mapping, reviewed plan required"
+    },
+    {
+      "table": "death",
+      "column": "cause_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "MANUAL_ONLY",
+      "reason": "Cause semantics; no prescribed single domain or declared event primary key"
+    },
+    {
+      "table": "note",
+      "column": "note_class_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "MANUAL_ONLY",
+      "reason": "Document classification requires accepted-concept/LOINC rules, not domain Note"
+    },
+    {
+      "table": "note_nlp",
+      "column": "note_nlp_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "MANUAL_ONLY",
+      "reason": "NLP assertion/context and downstream relationships need separate review"
+    },
+    {
+      "table": "episode",
+      "column": "episode_object_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "MANUAL_ONLY",
+      "reason": "Domain/class depends on disease versus treatment episode"
+    },
+    {
+      "table": "condition_era",
+      "column": "condition_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "REBUILD_REQUIRED",
+      "reason": "Derived aggregate; rebuild after reviewed event remediation"
+    },
+    {
+      "table": "drug_era",
+      "column": "drug_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "REBUILD_REQUIRED",
+      "reason": "Derived ingredient-era aggregate; rebuild separately"
+    },
+    {
+      "table": "dose_era",
+      "column": "drug_concept_id",
+      "state": "AUDIT_ONLY",
+      "policy": "REBUILD_REQUIRED",
+      "reason": "Derived ingredient/dose aggregate; rebuild separately"
+    }
+  ],
+  "inventory": [
+    {
+      "table": "person",
+      "column": "gender_concept_id",
+      "category": "DEMOGRAPHIC",
+      "state": "SCANNED",
+      "scanned_occurrences": 1000
+    },
+    {
+      "table": "person",
+      "column": "race_concept_id",
+      "category": "DEMOGRAPHIC",
+      "state": "SCANNED",
+      "scanned_occurrences": 1000
+    },
+    {
+      "table": "person",
+      "column": "ethnicity_concept_id",
+      "category": "DEMOGRAPHIC",
+      "state": "SCANNED",
+      "scanned_occurrences": 1000
+    },
+    {
+      "table": "person",
+      "column": "gender_source_concept_id",
+      "category": "SOURCE",
+      "state": "EXCLUDED_SOURCE_PROVENANCE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "person",
+      "column": "race_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "person",
+      "column": "ethnicity_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation_period",
+      "column": "period_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "visit_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "visit_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "visit_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "admitted_from_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_occurrence",
+      "column": "discharged_to_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_detail",
+      "column": "visit_detail_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_detail",
+      "column": "visit_detail_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_detail",
+      "column": "visit_detail_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_detail",
+      "column": "admitted_from_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "visit_detail",
+      "column": "discharged_to_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_status_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_exposure",
+      "column": "drug_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_exposure",
+      "column": "drug_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_exposure",
+      "column": "route_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_exposure",
+      "column": "drug_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "procedure_occurrence",
+      "column": "procedure_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "procedure_occurrence",
+      "column": "procedure_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "procedure_occurrence",
+      "column": "modifier_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "procedure_occurrence",
+      "column": "procedure_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "device_exposure",
+      "column": "device_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "device_exposure",
+      "column": "device_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "device_exposure",
+      "column": "device_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "device_exposure",
+      "column": "unit_concept_id",
+      "category": "UNIT",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "device_exposure",
+      "column": "unit_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "measurement_concept_id",
+      "category": "OTHER",
+      "state": "UNSCANNED_NOT_SELECTED_EVENT",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "measurement_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "operator_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "value_as_concept_id",
+      "category": "VALUE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "unit_concept_id",
+      "category": "UNIT",
+      "state": "SCANNED",
+      "scanned_occurrences": 2000
+    },
+    {
+      "table": "measurement",
+      "column": "measurement_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "unit_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "measurement",
+      "column": "meas_event_field_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_FIELD",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "observation_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "observation_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "value_as_concept_id",
+      "category": "VALUE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "qualifier_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "unit_concept_id",
+      "category": "UNIT",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "observation_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "observation",
+      "column": "obs_event_field_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "death",
+      "column": "death_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "death",
+      "column": "cause_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "death",
+      "column": "cause_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note",
+      "column": "note_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note",
+      "column": "note_class_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note",
+      "column": "encoding_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note",
+      "column": "language_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note",
+      "column": "note_event_field_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note_nlp",
+      "column": "section_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note_nlp",
+      "column": "note_nlp_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "note_nlp",
+      "column": "note_nlp_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "specimen",
+      "column": "specimen_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "specimen",
+      "column": "specimen_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "specimen",
+      "column": "unit_concept_id",
+      "category": "UNIT",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "specimen",
+      "column": "anatomic_site_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "specimen",
+      "column": "disease_status_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "fact_relationship",
+      "column": "domain_concept_id_1",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "fact_relationship",
+      "column": "domain_concept_id_2",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "fact_relationship",
+      "column": "relationship_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "location",
+      "column": "country_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "care_site",
+      "column": "place_of_service_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "provider",
+      "column": "specialty_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "provider",
+      "column": "gender_concept_id",
+      "category": "DEMOGRAPHIC",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "provider",
+      "column": "specialty_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "provider",
+      "column": "gender_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "payer_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "payer_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "plan_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "plan_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "sponsor_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "sponsor_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "stop_reason_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "payer_plan_period",
+      "column": "stop_reason_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cost",
+      "column": "cost_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cost",
+      "column": "currency_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cost",
+      "column": "revenue_code_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cost",
+      "column": "drg_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_era",
+      "column": "drug_concept_id",
+      "category": "DERIVED",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "dose_era",
+      "column": "drug_concept_id",
+      "category": "DERIVED",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "dose_era",
+      "column": "unit_concept_id",
+      "category": "UNIT",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "condition_era",
+      "column": "condition_concept_id",
+      "category": "DERIVED",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "episode",
+      "column": "episode_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "episode",
+      "column": "episode_object_concept_id",
+      "category": "OTHER",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "episode",
+      "column": "episode_type_concept_id",
+      "category": "TYPE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "episode",
+      "column": "episode_source_concept_id",
+      "category": "SOURCE",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "episode_event",
+      "column": "episode_event_field_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "metadata",
+      "column": "metadata_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "metadata",
+      "column": "metadata_type_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "metadata",
+      "column": "value_as_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cdm_source",
+      "column": "cdm_version_concept_id",
+      "category": "STRUCTURAL",
+      "state": "MISSING_OR_INACCESSIBLE_TABLE",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "vocabulary",
+      "column": "vocabulary_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "domain",
+      "column": "domain_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_class",
+      "column": "concept_class_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_relationship",
+      "column": "concept_id_1",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_relationship",
+      "column": "concept_id_2",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "relationship",
+      "column": "relationship_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_synonym",
+      "column": "concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_synonym",
+      "column": "language_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_ancestor",
+      "column": "ancestor_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "concept_ancestor",
+      "column": "descendant_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "source_to_concept_map",
+      "column": "source_concept_id",
+      "category": "SOURCE",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "source_to_concept_map",
+      "column": "target_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_strength",
+      "column": "drug_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_strength",
+      "column": "ingredient_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_strength",
+      "column": "amount_unit_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_strength",
+      "column": "numerator_unit_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "drug_strength",
+      "column": "denominator_unit_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cohort_definition",
+      "column": "definition_type_concept_id",
+      "category": "TYPE",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    },
+    {
+      "table": "cohort_definition",
+      "column": "subject_concept_id",
+      "category": "OTHER",
+      "state": "EXCLUDED_NON_CDM_SCHEMA",
+      "scanned_occurrences": null
+    }
+  ],
+  "vocabulary_versions": [
+    {
+      "vocabulary_id": "SYNTHETIC",
+      "vocabulary_version": "demo-1"
+    }
+  ],
+  "auxiliary_scan_completed_at": "2026-01-01T00:00:00+00:00",
+  "other_field_findings": [
+    {
+      "table": "person",
+      "column": "gender_concept_id",
+      "old_id": null,
+      "old_name": null,
+      "old_domain": null,
+      "old_vocabulary": null,
+      "concept_id": 900000401,
+      "concept_name": "Synthetic nonstandard demographic label",
+      "vocabulary": "SYNTHETIC",
+      "domain": "Gender",
+      "status": "NONSTANDARD_REVIEW",
+      "reason": null,
+      "category": "DEMOGRAPHIC",
+      "record_count": 3,
+      "new_id": null,
+      "scope": "plan_time_other_field",
+      "semantic_review_required": false,
+      "scanned_occurrences": 1000,
+      "share_of_field": 0.003,
+      "candidates": []
+    },
+    {
+      "table": "measurement",
+      "column": "unit_concept_id",
+      "old_id": null,
+      "old_name": null,
+      "old_domain": null,
+      "old_vocabulary": null,
+      "concept_id": 900000402,
+      "concept_name": "Synthetic unit label",
+      "vocabulary": "SYNTHETIC",
+      "domain": "Unit",
+      "status": "NONSTANDARD_REVIEW",
+      "reason": null,
+      "category": "UNIT",
+      "record_count": 129,
+      "new_id": null,
+      "scope": "plan_time_other_field",
+      "semantic_review_required": false,
+      "scanned_occurrences": 2000,
+      "share_of_field": 0.0645,
+      "candidates": [
+        {
+          "concept_id": 900000501,
+          "concept_name": "Synthetic unit candidate",
+          "vocabulary": "SYNTHETIC",
+          "domain": "Unit",
+          "relationship": "Maps to",
+          "status": "STANDARD_VALID_TARGET_REQUIRES_FIELD_REVIEW",
+          "relationship_role": null
+        }
+      ]
+    }
+  ],
+  "vocabulary_validity_as_of": "2026-01-01",
+  "journal_verified_at": "2026-01-01T00:10:00+00:00",
+  "updated_rows": 1482,
+  "changed_pairs": [
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "old_id": 900000001,
+      "new_id": 900000101,
+      "old_name": "Synthetic old concept 0",
+      "new_name": "Synthetic replacement concept 0",
+      "old_domain": "Condition",
+      "new_domain": "Condition",
+      "old_vocabulary": "SYNTHETIC",
+      "new_vocabulary": "SYNTHETIC",
+      "updated_rows": 2
+    },
+    {
+      "table": "measurement",
+      "column": "measurement_concept_id",
+      "old_id": 900000002,
+      "new_id": 900000102,
+      "old_name": "Synthetic old concept 1",
+      "new_name": "Synthetic replacement concept 1",
+      "old_domain": "Measurement",
+      "new_domain": "Measurement",
+      "old_vocabulary": "SYNTHETIC",
+      "new_vocabulary": "SYNTHETIC",
+      "updated_rows": 180
+    },
+    {
+      "table": "observation",
+      "column": "observation_concept_id",
+      "old_id": 900000003,
+      "new_id": 900000103,
+      "old_name": "Synthetic old concept 2",
+      "new_name": "Synthetic replacement concept 2",
+      "old_domain": "Observation",
+      "new_domain": "Observation",
+      "old_vocabulary": "SYNTHETIC",
+      "new_vocabulary": "SYNTHETIC",
+      "updated_rows": 1300
+    }
+  ],
+  "primary_after": [
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "status": "MULTIPLE_MAPS",
+      "record_count": 4
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "status": "DUPLICATE_EVENT_ID",
+      "record_count": 2
+    },
+    {
+      "table": "condition_occurrence",
+      "column": "condition_concept_id",
+      "status": "NULL_EVENT_ID",
+      "record_count": 1
+    }
+  ]
+}

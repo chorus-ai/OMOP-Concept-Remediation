@@ -4,17 +4,65 @@ from copy import deepcopy
 from datetime import datetime,timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
+import errno
 import json
 import os
+import shutil
 import uuid
+
+_windows_publish = os.name == "nt"
 
 PAIR_KEYS=("table","column","old_id","new_id")
 
 def _publish(temp,path):
-    # Windows rename refuses an existing destination; POSIX rename would replace it.
-    if os.name=="nt":os.rename(temp,path)
-    else:os.link(temp,path)
+    """Publish a complete staging file without replacing an existing destination."""
+    if _windows_publish:
+        os.rename(temp,path)
+        return
+    try:
+        os.link(temp,path)
+        return
+    except OSError as exc:
+        unsupported={errno.ENOSYS, errno.EOPNOTSUPP, errno.ENOTSUP, errno.EPERM}
+        if exc.errno not in unsupported:
+            raise
+    # Some approved mounts cannot link. Exclusive creation still enforces no
+    # overwrite. A process crash can leave an incomplete destination there.
+    with open(temp,"rb") as source:
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        try:
+            with os.fdopen(fd,"wb") as destination:
+                shutil.copyfileobj(source,destination)
+                destination.flush()
+        except BaseException:
+            Path(path).unlink(missing_ok=True)
+            raise
 
+def check_report_destination(path):
+    """Test the actual publish strategy with synthetic bytes, never site data."""
+    folder=Path(path).expanduser().resolve()
+    repository=Path(__file__).resolve().parents[1]
+    if folder==repository or repository in folder.parents or any((x/".git").exists() for x in (folder,*folder.parents)):
+        raise ValueError("Choose an approved private report folder outside all Git working trees")
+    folder.mkdir(mode=0o700,parents=True,exist_ok=True)
+    # Probe directly in the chosen directory, under a fresh, exclusive staging file.
+    from tempfile import mkstemp
+    fd,name=mkstemp(prefix=".remediation-probe-",dir=folder)
+    staged=Path(name)
+    published=staged.with_suffix(".check")
+    made=False
+    try:
+        with os.fdopen(fd,"wb") as probe:
+            probe.write(b"report destination check")
+        _publish(staged,published)
+        made=True
+        if published.read_bytes()!=b"report destination check":
+            raise OSError("Report destination verification failed")
+    finally:
+        staged.unlink(missing_ok=True)
+        if made:
+            published.unlink(missing_ok=True)
+    return folder
 
 def pair_counts(pairs):
     result={}
@@ -84,25 +132,38 @@ def load_committed_payload(conn,cfg,run_id):
         payload["verified_at"]=datetime.now(timezone.utc).isoformat()
     return payload
 
-def generate_committed_report(conn,cfg,run_id,path):
+def generate_committed_report(conn,cfg,run_id,path,*,include_evidence=False):
     payload=load_committed_payload(conn,cfg,run_id)
-    render_private_pdf(payload,path)
-    return {"run_id":run_id,"report_status":"CREATED","path":str(path),"updated_rows":payload["updated_rows"]}
+    if include_evidence:
+        render_private_pdf(payload,path,summary_only=True)
+    else:
+        render_private_pdf(payload,path)
+    result={"run_id":run_id,"report_status":"CREATED","path":str(path),"updated_rows":payload["updated_rows"]}
+    if include_evidence:
+        from .report_exports import export_evidence
+        try:
+            result.update(export_evidence(payload,path,committed=True))
+            result["evidence_status"]="CREATED"
+        except (OSError, ImportError, ValueError) as exc:
+            result.update(evidence_status="NOT_SAVED",evidence_error_type=type(exc).__name__)
+    return result
 
-def apply_and_report(conn,cfg,plan,path,**apply_options):
+def apply_and_report(conn,cfg,plan,path,*,include_evidence=False,**apply_options):
     from .runner import apply_plan
     result=apply_plan(conn,cfg,plan,**apply_options)
     if not result["committed"]:
         return dict(result,report_status="NOT_CREATED_REHEARSAL")
     # Database commit is already complete. PDF errors must NOT cause an automatic re-apply.
     try:
-        report=generate_committed_report(conn,cfg,plan["run_id"],path)
-        return dict(result,report_status=report["report_status"],report_path=report["path"])
+        report=(generate_committed_report(conn,cfg,plan["run_id"],path,include_evidence=True)
+                if include_evidence else generate_committed_report(conn,cfg,plan["run_id"],path))
+        return dict(result,report_status=report["report_status"],report_path=report["path"],
+                    **{k:report[k] for k in ("json_path","xlsx_path","evidence_status","evidence_error_type") if k in report})
     except Exception as exc:
         return dict(result,report_status="FAILED_AFTER_COMMIT",report_error_type=type(exc).__name__,
                     next_action="Regenerate the report from this run_id using generate_committed_report; do not re-apply")
 
-def render_private_pdf(payload,path,*,synthetic_fixture=False):
+def render_private_pdf(payload,path,*,synthetic_fixture=False,summary_only=False):
     """Renderer accepts only confirmed aggregate payloads. Test fixtures are unmistakably labelled."""
     if not synthetic_fixture and payload.get("confirmation")!="COMMITTED_JOURNAL_READBACK":
         raise ValueError("A committed journal read-back is required")
@@ -152,39 +213,61 @@ def render_private_pdf(payload,path,*,synthetic_fixture=False):
     by_table=Counter();by_domain=Counter()
     for pair in payload["pairs"]:
         by_table[pair["table"]]+=pair["updated_rows"];by_domain[pair["new_domain"]]+=pair["updated_rows"]
-    for values,title in ((by_table,"Actually updated rows by table"),(by_domain,"Actually updated rows by target domain")):
-        items=sorted(values.items(),key=lambda x:(-x[1],x[0]))
-        for start in range(0,len(items),12):
-            story += [bars(dict(items[start:start+12]),title + (" (continued; panel scale)" if start else "")),Spacer(1,8)]
-    story += [para("Evidence boundary","SectionTitle"),para("The data changes and journal were committed atomically; this report was generated afterwards from a separate read of that journal. Counts are historical facts for this run, not proof that no later ETL or manual edits occurred. Vocabulary mapping review is still required: one-to-one and same-domain checks do not prove clinical equivalence. This software has offline test coverage; real database acceptance must be performed by the site.")]
-    story += [PageBreak(),para("Complete list of committed replacement pairs","SectionTitle"),para("Every journaled table-field/old/new pair is listed below, with its actual changed-row count. Names and vocabulary labels were frozen with the reviewed plan, rather than reinterpreted using a later vocabulary release.")]
-    pair_rows=[]
-    for r in payload["pairs"]:
-        pair_rows.append([r["table"]+"\n"+r["column"],str(r["old_id"])+"\n"+r["old_name"]+"\n"+r["old_vocabulary"],str(r["new_id"])+"\n"+r["new_name"]+"\n"+r["new_vocabulary"],r["new_domain"],f"{r['updated_rows']:,}"])
-    story += [tab(["Table / field","Old concept / vocabulary","New concept / vocabulary","Domain","Rows"],pair_rows,[width*.21,width*.27,width*.27,width*.15,width*.10])]
-    story += [PageBreak(),para("Coverage and explicit exclusions","SectionTitle"),para("Missing or inaccessible tables/fields are not interpreted as zero records. Audit-only and derived fields were not automatically remediated.")]
-    story += [tab(["Table / field","Status","Policy / reason"],[[r["table"]+"\n"+r["column"],r["state"],r["policy"]+"\n"+r["reason"]] for r in payload["coverage"]],[width*.32,width*.24,width*.44])]
-    story += [para("Unresolved primary-event findings after this run","SectionTitle")]
-    unresolved=[r for r in payload["after_summary"] if r["status"]!="CURRENT_STANDARD"]
-    story += [tab(["Table / field","Status","Rows"],[[r["table"]+"\n"+r["column"],r["status"],r["record_count"]] for r in unresolved],[width*.45,width*.4,width*.15]) if unresolved else para("No unresolved primary-event findings were returned within the selected scope. This is not a whole-database quality certificate.")]
-    aux=payload["other_audit"]
-    story += [PageBreak(),para("Other concept fields: analysis only, no changes","SectionTitle"),para("Read-only scan completed at: "+aux.get("scanned_at","not recorded")),para("The following statistics were captured at plan creation, not claimed to reflect the database after commit. Units, demographics, types and other non-primary fields were NOT updated. Source fields may legitimately contain nonstandard IDs and are explicitly excluded from standard-target remediation. Candidate mappings are suggestions for independent analysis, never proof of an acceptable replacement.")]
-    findings=aux.get("findings",[])
-    if findings:
-        by_category=Counter()
-        for r in findings:by_category[r["category"]]+=r["record_count"]
-        story += [bars(by_category,"Flagged concept-field occurrences by category"),para("These are column occurrences, not distinct rows or patients: one record can contribute to multiple concept fields. Do not add these counts to the updated-event-row total.")]
-        rows=[]
-        for r in findings:
-            cs=r.get("candidates",[]) or [None]
-            for index,c in enumerate(cs):
-                candidate=(str(c["concept_id"])+" "+c.get("concept_name","")+"\n"+(c.get("relationship") or "not recorded")+" / "+(c.get("domain") or "not recorded")+" / "+(c.get("vocabulary") or "not recorded")+"\n"+c["status"]) if c else "No active candidate reported"
-                rows.append([r["table"]+"\n"+r["column"],str(r.get("concept_id"))+"\n"+r.get("concept_name","")+"\n"+r.get("domain","")+" / "+r.get("vocabulary",""),r["status"],str(r["record_count"]) if index==0 else "(same group)",candidate])
-        story += [tab(["Table / field","Current concept","Finding","Count","Active candidates (review only)"],rows,[width*.23,width*.25,width*.16,width*.08,width*.28])]
-    else:story += [para("No flagged records were returned in scanned other fields. Consult the inventory for exclusions and unscanned scope.")]
-    story += [para("Other-field scan inventory","SectionTitle"),tab(["Table / field","Category","Scan state"],[[r["table"]+"\n"+r["column"],r["category"],r["state"]] for r in aux.get("inventory",[])],[width*.52,width*.22,width*.26])]
-    story += [para("Action guide","SectionTitle"),para("NONSTANDARD / CLASSIFICATION: review whether this field requires a standard target and inspect all candidates. INVALID / OUT_OF_DATE: validate lifecycle and refresh the field-specific ETL rule. WRONG_DOMAIN: inspect the destination field, not only the mapping. MISSING_CONCEPT: investigate vocabulary coverage or loading. ZERO / NULL: check CDM field requirements and source completeness; never invent a replacement. Multiple targets or Maps to value require a separate semantic transformation. Unit changes may require numeric conversion. No candidate means no replacement was established.")]
-    story += [para("Reproducibility and limitations","SectionTitle"),para("Plan SHA-256: "+payload["plan_hash"]),para("Full vocabulary metadata was saved in the private transactional report payload. Source references: OHDSI Common Data Model version-specific specifications and vocabulary conventions (https://ohdsi.github.io/CommonDataModel/cdm54.html; https://ohdsi.github.io/CommonDataModel/vocabulary.html). No automatic downstream era/cohort rebuild is implied. Exact small counts must undergo site disclosure review before external distribution.")]
+    if summary_only:
+        story += [para("Run summary","SectionTitle")]
+        story += [tab(["Updated table","Committed rows"],[[table,f"{count:,}"] for table,count in sorted(by_table.items())],[width*.7,width*.3])]
+        residue=[r for r in payload["after_summary"] if r["status"]!="CURRENT_STANDARD"]
+        from .preview_report import REASONS
+        if residue:
+            story += [para("Still needs review","SectionTitle"),
+                      tab(["Field","Finding / next action","Rows"],
+                          [[r["table"]+"."+r["column"],REASONS.get(r["status"],r["status"].replace("_"," ").title()),r["record_count"]] for r in residue],
+                          [width*.38,width*.49,width*.13])]
+        else:
+            story += [para("No unresolved primary-event findings in the selected scope.")]
+        top=sorted(payload["pairs"],key=lambda r:-r["updated_rows"])[:3]
+        story += [para("Most frequent changes","SectionTitle"),
+                  tab(["Previous concept","Replacement concept","Rows"],
+                      [[r["old_name"],r["new_name"],r["updated_rows"]] for r in top],[width*.42,width*.43,width*.15])]
+        selected=sorted({r["table"] for r in payload["coverage"] if r["state"]=="SELECTED_FOR_REVIEW"})
+        if selected:
+            story += [para("Reviewed primary scope: "+", ".join(selected)+". Other tables are not implied to be updated or checked.")]
+        story += [para("Full pairs, scope, unresolved findings and plan-time statistics for other concept fields are available in the matching private XLSX and JSON. Field shares use the number scanned in that field, not the number of people. No downstream cohorts or derived eras were rebuilt."),
+                  para("Check semantic specificity before reuse: a same-domain 1:1 mapping does not prove clinical equivalence. Do not repeat Apply to regenerate this report.")]
+    else:
+        for values,title in ((by_table,"Actually updated rows by table"),(by_domain,"Actually updated rows by target domain")):
+            items=sorted(values.items(),key=lambda x:(-x[1],x[0]))
+            for start in range(0,len(items),12):
+                story += [bars(dict(items[start:start+12]),title + (" (continued; panel scale)" if start else "")),Spacer(1,8)]
+        story += [para("Evidence boundary","SectionTitle"),para("The data changes and journal were committed atomically; this report was generated afterwards from a separate read of that journal. Counts are historical facts for this run, not proof that no later ETL or manual edits occurred. Vocabulary mapping review is still required: one-to-one and same-domain checks do not prove clinical equivalence. This software has offline test coverage; real database acceptance must be performed by the site.")]
+        story += [PageBreak(),para("Complete list of committed replacement pairs","SectionTitle"),para("Every journaled table-field/old/new pair is listed below, with its actual changed-row count. Names and vocabulary labels were frozen with the reviewed plan, rather than reinterpreted using a later vocabulary release.")]
+        pair_rows=[]
+        for r in payload["pairs"]:
+            pair_rows.append([r["table"]+"\n"+r["column"],str(r["old_id"])+"\n"+r["old_name"]+"\n"+r["old_vocabulary"],str(r["new_id"])+"\n"+r["new_name"]+"\n"+r["new_vocabulary"],r["new_domain"],f"{r['updated_rows']:,}"])
+        story += [tab(["Table / field","Old concept / vocabulary","New concept / vocabulary","Domain","Rows"],pair_rows,[width*.21,width*.27,width*.27,width*.15,width*.10])]
+        story += [PageBreak(),para("Coverage and explicit exclusions","SectionTitle"),para("Missing or inaccessible tables/fields are not interpreted as zero records. Audit-only and derived fields were not automatically remediated.")]
+        story += [tab(["Table / field","Status","Policy / reason"],[[r["table"]+"\n"+r["column"],r["state"],r["policy"]+"\n"+r["reason"]] for r in payload["coverage"]],[width*.32,width*.24,width*.44])]
+        story += [para("Unresolved primary-event findings after this run","SectionTitle")]
+        unresolved=[r for r in payload["after_summary"] if r["status"]!="CURRENT_STANDARD"]
+        story += [tab(["Table / field","Status","Rows"],[[r["table"]+"\n"+r["column"],r["status"],r["record_count"]] for r in unresolved],[width*.45,width*.4,width*.15]) if unresolved else para("No unresolved primary-event findings were returned within the selected scope. This is not a whole-database quality certificate.")]
+        aux=payload["other_audit"]
+        story += [PageBreak(),para("Other concept fields: analysis only, no changes","SectionTitle"),para("Read-only scan completed at: "+aux.get("scanned_at","not recorded")),para("The following statistics were captured at plan creation, not claimed to reflect the database after commit. Units, demographics, types and other non-primary fields were NOT updated. Source fields may legitimately contain nonstandard IDs and are explicitly excluded from standard-target remediation. Candidate mappings are suggestions for independent analysis, never proof of an acceptable replacement.")]
+        findings=aux.get("findings",[])
+        if findings:
+            by_category=Counter()
+            for r in findings:by_category[r["category"]]+=r["record_count"]
+            story += [bars(by_category,"Flagged concept-field occurrences by category"),para("These are column occurrences, not distinct rows or patients: one record can contribute to multiple concept fields. Do not add these counts to the updated-event-row total.")]
+            rows=[]
+            for r in findings:
+                cs=r.get("candidates",[]) or [None]
+                for index,c in enumerate(cs):
+                    candidate=(str(c["concept_id"])+" "+c.get("concept_name","")+"\n"+(c.get("relationship") or "not recorded")+" / "+(c.get("domain") or "not recorded")+" / "+(c.get("vocabulary") or "not recorded")+"\n"+c["status"]) if c else "No active candidate reported"
+                    rows.append([r["table"]+"\n"+r["column"],str(r.get("concept_id"))+"\n"+r.get("concept_name","")+"\n"+r.get("domain","")+" / "+r.get("vocabulary",""),r["status"],str(r["record_count"]) if index==0 else "(same group)",candidate])
+            story += [tab(["Table / field","Current concept","Finding","Count","Active candidates (review only)"],rows,[width*.23,width*.25,width*.16,width*.08,width*.28])]
+        else:story += [para("No flagged records were returned in scanned other fields. Consult the inventory for exclusions and unscanned scope.")]
+        story += [para("Other-field scan inventory","SectionTitle"),tab(["Table / field","Category","Scan state"],[[r["table"]+"\n"+r["column"],r["category"],r["state"]] for r in aux.get("inventory",[])],[width*.52,width*.22,width*.26])]
+        story += [para("Action guide","SectionTitle"),para("NONSTANDARD / CLASSIFICATION: review whether this field requires a standard target and inspect all candidates. INVALID / OUT_OF_DATE: validate lifecycle and refresh the field-specific ETL rule. WRONG_DOMAIN: inspect the destination field, not only the mapping. MISSING_CONCEPT: investigate vocabulary coverage or loading. ZERO / NULL: check CDM field requirements and source completeness; never invent a replacement. Multiple targets or Maps to value require a separate semantic transformation. Unit changes may require numeric conversion. No candidate means no replacement was established.")]
+        story += [para("Reproducibility and limitations","SectionTitle"),para("Plan SHA-256: "+payload["plan_hash"]),para("Full vocabulary metadata was saved in the private transactional report payload. Source references: OHDSI Common Data Model version-specific specifications and vocabulary conventions (https://ohdsi.github.io/CommonDataModel/cdm54.html; https://ohdsi.github.io/CommonDataModel/vocabulary.html). No automatic downstream era/cohort rebuild is implied. Exact small counts must undergo site disclosure review before external distribution.")]
     def footer(canvas,doc):
         canvas.setFont("Times-Roman",8);canvas.setFillColor(colors.HexColor("#526571"))
         canvas.drawString(18*mm,12*mm,"SYNTHETIC FIXTURE" if synthetic_fixture else "PRIVATE | Site disclosure review required")
@@ -193,8 +276,7 @@ def render_private_pdf(payload,path,*,synthetic_fixture=False):
         doc=SimpleDocTemplate(str(temp),pagesize=A4,rightMargin=18*mm,leftMargin=18*mm,topMargin=17*mm,bottomMargin=20*mm,title="OMOP Concept Remediation - Private Report",author="")
         doc.build(story,onFirstPage=footer,onLaterPages=footer)
         # Exclusive destination: never overwrite an existing run report.
-        _publish(temp,path)  # Atomic no-overwrite publication of a fully written file.
-        # If this filesystem forbids hard links, fail clearly and regenerate on approved local storage.
+        _publish(temp,path)  # Publish without overwriting a prior report.
     except Exception:
         # A failed PDF does not undo a committed database transaction.
         raise
